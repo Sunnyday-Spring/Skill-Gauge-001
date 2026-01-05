@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import './Dashboard.css';
 import { mockUser } from '../mock/mockData';
 import AdminOverview from './admin/AdminOverview';
 import AdminUsersTable from './admin/AdminUsersTable';

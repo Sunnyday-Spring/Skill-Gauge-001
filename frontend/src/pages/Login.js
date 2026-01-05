@@ -49,6 +49,33 @@ const Login = () => {
     
     const trimmedUsername = username.trim();
 
+    // ==================================================================
+    // 🟢 [ทางเข้าพิเศษ] สำหรับทดสอบระบบ (ใส่ไว้ตรงนี้เลยครับ)
+    // ==================================================================
+    
+    // 1. ทางเข้า "หัวหน้างาน" (Foreman)
+    if (trimmedUsername === 'foreman' && password === '1234') {
+        const user = { name: 'Foreman Test', role: 'foreman' };
+        sessionStorage.setItem('role', 'foreman');
+        sessionStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('auth_token', 'mock-token-foreman'); // หลอกระบบว่าล็อกอินแล้ว
+        navigate('/foreman'); // เด้งไปหน้าหัวหน้าทันที
+        return; 
+    }
+
+    // 2. ทางเข้า "ช่าง" (Worker)
+    if (trimmedUsername === 'worker' && password === '1234') {
+        const user = { name: 'Worker Test', role: 'worker' };
+        sessionStorage.setItem('role', 'worker');
+        sessionStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('auth_token', 'mock-token-worker'); // หลอกระบบว่าล็อกอินแล้ว
+        navigate('/worker'); // เด้งไปหน้าช่างทันที
+        return;
+    }
+    // ==================================================================
+
+
+    // --- Admin Bypass Check ---
     if (trimmedUsername === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       setError('');
       const token = 'admin-bypass-token';
@@ -69,6 +96,7 @@ const Login = () => {
       return;
     }
 
+    // --- Regular Login (ล็อกอินปกติผ่าน Database) ---
     try {
       const loginUrl = API ? `${API}/api/auth/login` : '/api/auth/login';
       const res = await fetch(loginUrl, {
@@ -100,19 +128,21 @@ const Login = () => {
       const chosenRole = chooseRole(role, serverRoles);
       try { sessionStorage.setItem('role', chosenRole); } catch {}
 
-      // Check if worker profile is completed
-      const hasProfile = sessionStorage.getItem('worker_profile');
       const navUser = { username: user?.phone || username, role: chosenRole };
       
+      // เลือกเส้นทางตามตำแหน่งงาน
       if (chosenRole === 'admin') {
         navigate('/admin', { state: { user: navUser, source: 'login' } });
+      } else if (chosenRole === 'foreman') {
+        navigate('/foreman', { state: { user: navUser, source: 'login' } });
+      } else if (chosenRole === 'worker') {
+        navigate('/worker', { state: { user: navUser, source: 'login' } });
       } else if (chosenRole === 'project_manager') {
         navigate('/pm', { state: { user: navUser, source: 'login' } });
-      } else if (chosenRole === 'worker' && !hasProfile) {
-        navigate('/worker-profile', { state: { user: navUser, source: 'login' } });
       } else {
         navigate('/dashboard', { state: { user: navUser, source: 'login' } });
       }
+
     } catch (e) {
       console.error(e);
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
@@ -168,8 +198,7 @@ const Login = () => {
                     aria-label={showPass ? 'Hide password' : 'Show password'}
                     onClick={()=>setShowPass(s=>!s)}
                   >
-                    {/* Bootstrap eye SVG (inline), uses currentColor */}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill" viewBox="0 0 16 16">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-eye-fill" viewBox="0 0 16 16">
                       <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
                       <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
                     </svg>
