@@ -50,7 +50,7 @@ const Login = () => {
     const trimmedUsername = username.trim();
 
     // ==================================================================
-    // 🟢 [ทางเข้าพิเศษ] สำหรับทดสอบระบบ (ใส่ไว้ตรงนี้เลยครับ)
+    //  [ทางเข้าพิเศษ] สำหรับทดสอบระบบ
     // ==================================================================
     
     // 1. ทางเข้า "หัวหน้างาน" (Foreman)
@@ -58,8 +58,8 @@ const Login = () => {
         const user = { name: 'Foreman Test', role: 'foreman' };
         sessionStorage.setItem('role', 'foreman');
         sessionStorage.setItem('user', JSON.stringify(user));
-        sessionStorage.setItem('auth_token', 'mock-token-foreman'); // หลอกระบบว่าล็อกอินแล้ว
-        navigate('/foreman'); // เด้งไปหน้าหัวหน้าทันที
+        sessionStorage.setItem('auth_token', 'mock-token-foreman');
+        navigate('/foreman');
         return; 
     }
 
@@ -68,8 +68,18 @@ const Login = () => {
         const user = { name: 'Worker Test', role: 'worker' };
         sessionStorage.setItem('role', 'worker');
         sessionStorage.setItem('user', JSON.stringify(user));
-        sessionStorage.setItem('auth_token', 'mock-token-worker'); // หลอกระบบว่าล็อกอินแล้ว
-        navigate('/worker'); // เด้งไปหน้าช่างทันที
+        sessionStorage.setItem('auth_token', 'mock-token-worker');
+        navigate('/worker');
+        return;
+    }
+
+    // 3. ✅ [เพิ่มใหม่] ทางเข้า "PM" (Project Manager)
+    if (trimmedUsername === 'pm' && password === '1234') {
+        const user = { name: 'Project Manager Test', role: 'project_manager' }; // หรือ role: 'pm' ตามที่คุณใช้ใน App.js
+        sessionStorage.setItem('role', 'project_manager');
+        sessionStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('auth_token', 'mock-token-pm');
+        navigate('/pm'); // เด้งไปหน้า PM ทันที
         return;
     }
     // ==================================================================

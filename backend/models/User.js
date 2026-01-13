@@ -56,3 +56,32 @@ exports.create = async (userData) => {
 exports.comparePassword = (password, hash) => {
   return bcrypt.compareSync(password, hash || '');
 };
+
+// 1. ค้นหา User ด้วย ID (จำเป็นสำหรับ Controller)
+exports.findById = async (id) => {
+  const sql = 'SELECT * FROM dbuser WHERE id = ? LIMIT 1';
+  const [rows] = await pool.query(sql, [id]);
+  return rows[0];
+};
+
+// 2. บันทึกคะแนนสอบ (เรียกใช้โดย quizController)
+exports.updateExamScore = async (id, score, fullScore) => {
+  const sql = `
+    UPDATE dbuser 
+    SET exam_score = ?, exam_full_score = ?, exam_date = NOW() 
+    WHERE id = ?
+  `;
+  await pool.query(sql, [score, fullScore, id]);
+};
+
+// 3. บันทึกผลประเมินและ Level (เรียกใช้โดย assessmentController)
+exports.updateAssessmentResult = async (id, onsiteScore, totalScore, skillLevel, details) => {
+  // หมายเหตุ: onsiteDetails อาจต้องเก็บเป็น JSON string หรือสร้างตารางแยก 
+  // แต่ในที่นี้จะเก็บเฉพาะค่าหลักๆ ก่อน
+  const sql = `
+    UPDATE dbuser 
+    SET onsite_score = ?, total_score = ?, skill_level = ?, status = 'Assessed', assessment_date = NOW()
+    WHERE id = ?
+  `;
+  await pool.query(sql, [onsiteScore, totalScore, skillLevel, id]);
+};

@@ -1,7 +1,6 @@
-// backend/controllers/assessmentController.js
+const User = require('../models/User');
 
-// --- 1. ส่วน Logic คำนวณ (เอามาจาก Prototype ของคุณ) ---
-
+// --- 1. Logic คำนวณ (เหมือนเดิม) ---
 const getProficiencyLevel = (percentage) => {
     const p = parseFloat(percentage);
     if (isNaN(p)) return "ไม่ระบุ";
@@ -11,71 +10,96 @@ const getProficiencyLevel = (percentage) => {
     return "Needs Improvement (ฝึกหัด)";
 };
 
-const calculateScoreLogic = (examRaw, examMax, onsiteRaw, onsiteMax, onsiteDetails = {}) => {
-    // ป้องกันการหารด้วย 0
-    const safeExamMax = examMax > 0 ? examMax : 1;
-    const safeOnsiteMax = onsiteMax > 0 ? onsiteMax : 1;
+const calculateScoreLogic = (examRaw, examMax, onsiteRaw, onsiteMax) => {
+    const safeExamRaw = Number(examRaw) || 0;
+    const safeOnsiteRaw = Number(onsiteRaw) || 0;
+    const safeExamMax = (examMax && Number(examMax) > 0) ? Number(examMax) : 60;
+    const safeOnsiteMax = (onsiteMax && Number(onsiteMax) > 0) ? Number(onsiteMax) : 100;
 
-    // คำนวณ %
-    const examPercent = (examRaw / safeExamMax) * 100;
-    const onsitePercent = (onsiteRaw / safeOnsiteMax) * 100;
+    if (safeExamRaw < 0 || safeOnsiteRaw < 0) throw new Error("คะแนนไม่สามารถติดลบได้");
+    if (safeExamRaw > safeExamMax) throw new Error(`คะแนนสอบ (${safeExamRaw}) สูงกว่าคะแนนเต็ม (${safeExamMax})`);
+    if (safeOnsiteRaw > safeOnsiteMax) throw new Error(`คะแนนหน้างาน (${safeOnsiteRaw}) สูงกว่าคะแนนเต็ม (${safeOnsiteMax})`);
 
-    // ถ่วงน้ำหนัก (สอบ 70% / หน้างาน 30%)
+    const examPercent = (safeExamRaw / safeExamMax) * 100;
+    const onsitePercent = (safeOnsiteRaw / safeOnsiteMax) * 100;
+
     const examWeighted = examPercent * 0.70;
     const onsiteWeighted = onsitePercent * 0.30;
     const totalScore = examWeighted + onsiteWeighted;
 
     return {
-        exam: {
-            raw: examRaw,
-            max: safeExamMax,
-            percent: parseFloat(examPercent.toFixed(2)),
-            weighted: parseFloat(examWeighted.toFixed(2))
-        },
-        onsite: {
-            raw: onsiteRaw,
-            max: safeOnsiteMax,
-            percent: parseFloat(onsitePercent.toFixed(2)),
-            weighted: parseFloat(onsiteWeighted.toFixed(2)),
-            level: getProficiencyLevel(onsitePercent),
-            details: onsiteDetails // ส่งรายละเอียดกลับไปด้วย
-        },
-        total: {
-            score: parseFloat(totalScore.toFixed(2)),
-            level: getProficiencyLevel(totalScore)
-        }
+        examPercent,
+        onsitePercent,
+        totalScore,
+        level: getProficiencyLevel(totalScore)
     };
 };
 
-// --- 2. ส่วน API Endpoint (รับ Request -> ตอบ Response) ---
-
-exports.calculateAssessment = async (req, res) => {
+// --- 2. ฟังก์ชันหลักสำหรับรับค่าและบันทึก (Controller) ---
+exports.submitAssessment = async (req, res) => {
     try {
-        // รับค่าจาก Frontend (Body JSON)
-        const { examRaw, examMax, onsiteRaw, onsiteMax, onsiteDetails } = req.body;
+        const { workerId, onsiteScore, onsiteFullScore } = req.body;
 
-        // ตรวจสอบข้อมูลเบื้องต้น
-        if (examRaw === undefined || onsiteRaw === undefined) {
-            return res.status(400).json({ error: 'กรุณาส่งคะแนน examRaw และ onsiteRaw มาให้ครบ' });
+        if (!workerId || onsiteScore === undefined) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ข้อมูลไม่ครบถ้วน: กรุณาระบุ Worker ID และคะแนนหน้างาน' 
+            });
         }
 
-        // เรียกใช้ Logic คำนวณ
-        const result = calculateScoreLogic(
-            Number(examRaw), 
-            Number(examMax || 0), 
-            Number(onsiteRaw), 
-            Number(onsiteMax || 0),
-            onsiteDetails || {}
+        // 1. ค้นหาช่างใน Database
+        const worker = await User.findById(workerId);
+        if (!worker) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลช่างในระบบ' });
+        }
+
+        // 2. ดึงคะแนนสอบจากข้อมูลช่าง (MySQL คืนค่าเป็น exam_score)
+        const examRaw = worker.exam_score || 0;
+        const examMax = worker.exam_full_score || 60; 
+
+        // 3. เรียกใช้ Logic คำนวณ
+        let result;
+        try {
+            result = calculateScoreLogic(
+                examRaw, 
+                examMax, 
+                Number(onsiteScore), 
+                Number(onsiteFullScore || 72)
+            );
+        } catch (logicError) {
+            return res.status(400).json({ 
+                success: false, 
+                message: logicError.message 
+            });
+        }
+
+        // 4. ✅ แก้ไขตรงนี้: ใช้ฟังก์ชัน MySQL ในการบันทึก
+        await User.updateAssessmentResult(
+            workerId,
+            onsiteScore,
+            result.totalScore,
+            result.level,
+            {} // details (ถ้ามี)
         );
 
-        // ส่งผลลัพธ์กลับเป็น JSON
-        res.json({
+        // 5. ส่งผลสำเร็จกลับไป
+        res.status(200).json({
             success: true,
-            data: result
+            message: 'ประมวลผลและบันทึกเรียบร้อย',
+            data: {
+                name: worker.full_name || worker.name,
+                examScore: examRaw,
+                onsiteScore: onsiteScore,
+                totalScore: result.totalScore.toFixed(2),
+                level: result.level
+            }
         });
 
-    } catch (err) {
-        console.error('Calculation Error:', err);
-        res.status(500).json({ error: 'เกิดข้อผิดพลาดในการคำนวณ' });
+    } catch (error) {
+        console.error("System Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'เกิดข้อผิดพลาดภายในระบบ: ' + error.message 
+        });
     }
 };
