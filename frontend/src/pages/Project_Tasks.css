@@ -1,24 +1,69 @@
-.task-page { margin-top: 1rem; }
-.task-header h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.2px; margin: 0 0 0.75rem; }
+/* Project_Tasks.css */
 
-.task-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem; }
+.task-page { margin-top: 1rem; padding: 0 20px; }
+.task-header h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.2px; margin: 0 0 0.5rem; color: #2c3e50; }
 
-.task-form { background: #fff; border: 1px solid #e2e6ec; border-radius: 12px; padding: 1rem; }
-.section-title { margin: 0 0 0.75rem; font-weight: 800; font-size: 1.25rem; }
+.task-grid { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; }
 
-.field { margin-bottom: 0.75rem; }
-.input, .select { width: 100%; background: #f8fbff; border: 1px solid #e2e6ec; border-radius: 10px; padding: 0.75rem 0.9rem; font-size: 0.95rem; color: #2b3a52; font-family: 'Inter', 'Noto Sans Thai', sans-serif; }
-.select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23607078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 2.2rem; }
+/* Form Section */
+.task-form { background: #fff; border: 1px solid #e2e6ec; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+.section-title { margin: 0 0 1rem; font-weight: 800; font-size: 1.1rem; color: #34495e; border-bottom: 2px solid #f1f2f6; padding-bottom: 10px; }
 
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px; color: #555; }
+.input, .select { width: 100%; background: #f8fbff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 0.75rem; font-size: 0.95rem; color: #2c3e50; transition: border 0.2s; }
+.input:focus, .select:focus { border-color: #3498db; outline: none; }
+.textarea { resize: vertical; min-height: 80px; }
+
+.field-row { display: flex; gap: 15px; }
+.field.half { flex: 1; }
+
+/* 🔥 กล่อง MILP (สีส้ม) */
+.milp-container {
+    background-color: #fff3e0;
+    border: 1px solid #ffe0b2;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.milp-select {
+    border-color: #f39c12;
+    background-color: #fff;
+    margin-top: 5px;
+}
+.milp-container small {
+    display: block;
+    margin-top: 5px;
+    color: #e67e22;
+    font-size: 0.85rem;
+}
+
+/* ปุ่ม Action */
 .actions { display: flex; justify-content: flex-end; margin-top: 1rem; }
-.btn-primary { background: #1a73e8; color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; }
-.btn-primary:hover { background: #1557b0; }
+.btn-primary { background: #27ae60; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 700; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3); transition: all 0.2s; }
+.btn-primary:hover { background: #219150; transform: translateY(-1px); }
+.btn-primary:disabled { background: #95a5a6; cursor: not-allowed; }
 
-.workers { background: #fff; border: 1px solid #e2e6ec; border-radius: 12px; padding: 1rem; }
-.worker-card { display: grid; grid-template-columns: 40px 1fr; gap: 0.75rem; align-items: center; border: 1px solid #e2e6ec; border-radius: 10px; padding: 0.7rem; background: #f8fbff; margin-bottom: 0.75rem; }
-.avatar.small { width: 32px; height: 32px; background: #9bb0c8; border-radius: 50%; }
-.w-name { font-weight: 700; }
-.w-sub { color: #5f6368; font-size: 0.9rem; }
+/* ปุ่ม AI ด้านบน */
+.btn-ai {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-right: 15px;
+    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+}
+.btn-ai:hover { background: #2980b9; }
+
+/* Sidebar ขวา */
+.workers { background: #fff; border: 1px solid #e2e6ec; border-radius: 12px; padding: 1rem; height: fit-content; }
+.worker-card { display: grid; grid-template-columns: 36px 1fr; gap: 0.75rem; align-items: center; border: 1px solid #eee; border-radius: 8px; padding: 0.7rem; background: #fafafa; margin-bottom: 0.75rem; }
+.avatar.small { width: 36px; height: 36px; border-radius: 50%; font-size: 14px; font-weight: bold; }
+.w-name { font-weight: 700; font-size: 0.95rem; color: #333; }
+.w-sub { color: #7f8c8d; font-size: 0.85rem; }
 
 @media (max-width: 900px) {
   .task-grid { grid-template-columns: 1fr; }

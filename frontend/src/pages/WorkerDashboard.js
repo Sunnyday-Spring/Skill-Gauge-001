@@ -127,10 +127,6 @@ const WorkerDashboard = () => {
                     {assignedTask && assignedTask.status === 'accepted' ? '1 งาน' : '0 งาน'}
                 </div>
             </div>
-            <div className="card-action" style={{ background: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '5px solid #95a5a6' }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#7f8c8d', fontSize: '14px' }}>คะแนนสอบข้อเขียน</h4>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50' }}>-- / 60</div>
-            </div>
           </div>
 
           <h2 style={{ color: '#2c3e50', marginBottom: '20px', borderLeft: '5px solid #27ae60', paddingLeft: '15px' }}>
@@ -158,8 +154,7 @@ const WorkerDashboard = () => {
                             <p style={{ margin: '0', color: '#7f8c8d', fontSize: '14px' }}><strong>ผู้คุมงาน:</strong> {assignedTask.foreman} | <strong>วันที่:</strong> {assignedTask.date}</p>
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button className="btn btn-secondary" style={{ padding: '8px 20px', border: '1px solid #bdc3c7', background: 'white', borderRadius: '5px', cursor: 'pointer' }}>ปฏิเสธ</button>
-                            <button className="btn btn-primary" onClick={handleAcceptTask} style={{ padding: '8px 20px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ตอบรับงาน</button>
+                            <button className="btn btn-primary" onClick={handleAcceptTask} style={{ padding: '8px 20px', background: '#e6e9e7', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ดูงานที่ได้รับมอบหมาย</button>
                         </div>
                     </div>
                 </div>
