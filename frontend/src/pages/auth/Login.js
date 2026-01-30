@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
-import { chooseRole } from '../utils/auth';
-import { API_BASE_URL } from '../utils/api';
+import { chooseRole } from '../../utils/auth';
+import { API_BASE_URL } from '../../utils/api';
 
 const Login = () => {
   const navigate = useNavigate();

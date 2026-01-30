@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import '../Dashboard.css';
+import '../../pages/general/Dashboard.css';
 import './AdminUsersTable.css';
 import { apiRequest } from '../../utils/api';
 

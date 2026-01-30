@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import './WKDashboard.css';
-import { mockUser, mockProjects, mockSites, mockTasks } from '../mock/mockData';
+import './Dashboard.css';
+import { mockUser, mockProjects, mockSites, mockTasks } from '../../mock/mockData';
 
 const Dashboard = () => {
   const location = useLocation();

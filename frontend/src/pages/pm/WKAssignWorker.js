@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { mockUser } from '../mock/mockData';
-import "./Dashboard.css";
+import { mockUser } from '../../mock/mockData';
+import '../../pages/general/Dashboard.css';
 
 const WKAssignWorker = () => {
   const location = useLocation();
