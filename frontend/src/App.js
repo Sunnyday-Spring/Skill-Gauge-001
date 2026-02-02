@@ -24,14 +24,18 @@ import WKCreateProject from './pages/pm/WKCreateProject';
 import WKProjectTasks from './pages/pm/WKProject_Tasks';
 import WKAssignWorker from './pages/pm/WKAssignWorker'; 
 import ProjectDetail from './pages/pm/ProjectDetail';
+import PMSettings from './pages/pm/PMSettings';
 
 // ✅ 5. Foreman (แก้ตัว f เป็น F ใหญ่ ตามชื่อโฟลเดอร์ของคุณ: src/pages/Foreman)
 import ForemanDashboard from './pages/Foreman/ForemanDashboard';
 import ForemanAssessment from './pages/Foreman/ForemanAssessment';
 import ForemanReportSystem from './pages/Foreman/ForemanReportSystem';
+import ForemanSettings from './pages/Foreman/ForemanSettings';
 
 // ✅ 6. Worker (แก้ตัว w เป็น W ใหญ่ ตามชื่อโฟลเดอร์ของคุณ: src/pages/Worker)
-import WorkerDashboard from './pages/Worker/WorkerDashboard';    
+import WorkerDashboard from './pages/Worker/WorkerDashboard'; 
+import WorkerTaskDetail from './pages/Worker/WorkerTaskDetail'; 
+import WorkerSettings from './pages/Worker/WorkerSettings';  
 
 // ✅ 7. Assessment (เรียกจากโฟลเดอร์ assessment)
 import SkillAssessmentTest from './pages/assessment/SkillAssessmentTest';
@@ -74,17 +78,22 @@ function App() {
           <Route path="/define-tasks" element={<WKProjectTasks />} /> 
           <Route path="/assign-worker" element={<WKAssignWorker />} /> 
           <Route path="/project-detail" element={<ProjectDetail />} />
+          <Route path="/pm-settings" element={<PMSettings />} />
           
           {/* Foreman */}
           <Route path="/foreman" element={<ForemanDashboard />} />
           <Route path="/foreman/assessment" element={<ForemanAssessment />} />
           <Route path="/foreman-reports" element={<ForemanReportSystem />} />
+          <Route path="/foreman-reports" element={<ForemanReportSystem />} />
+          <Route path="/foreman-settings" element={<ForemanSettings />} />
           
           {/* Worker & Assessment */}
           <Route path="/worker" element={<WorkerDashboard />} />
           <Route path="/worker/test" element={<SkillAssessmentTest />} />
           <Route path="/skill-assessment" element={<WKSkillAssessmentTest />} />
           <Route path="/skill-assessment/quiz" element={<WKSkillAssessmentQuiz />} />
+          <Route path="/worker/task-detail" element={<WorkerTaskDetail />} />
+          <Route path="/worker-settings" element={<WorkerSettings />} />
 
         </Routes>
       </div>

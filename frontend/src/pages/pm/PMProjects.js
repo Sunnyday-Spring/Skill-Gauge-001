@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { mockUser } from '../../mock/mockData';
-import '../../pages/general/Dashboard.css';
+import '../pm/WKDashboard.css';
 
 const PMProjects = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
   const user = location.state?.user || { ...mockUser, role: 'Project Manager' };
+
+  // ฟังก์ชัน Logout สำหรับ Sidebar
+  const handleLogout = () => {
+    if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
+      sessionStorage.clear();
+      navigate('/login');
+    }
+  };
 
   const [projects, setProjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,19 +61,6 @@ const PMProjects = () => {
     return { bg: '#f5f5f5', color: '#616161', text: 'รอดำเนินการ' };
   };
 
-  // --- Style ปุ่ม Sidebar (การ์ดขาว) ---
-  const btnStyle = {
-    width: '100%', padding: '12px', marginBottom: '10px',
-    borderRadius: '12px', background: 'white', border: '1px solid #e2e8f0', 
-    color: '#334155', fontSize: '15px', fontWeight: '600', cursor: 'pointer', 
-    textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s'
-  };
-
-  const activeBtnStyle = {
-    ...btnStyle,
-    background: '#e0e7ff', border: '1px solid #c7d2fe', color: '#3730a3'
-  };
-
   // --- Style การ์ดสรุป (Layer ใหม่) ---
   const statCardStyle = {
     flex: 1, background: 'white', padding: '20px', borderRadius: '16px',
@@ -76,17 +71,49 @@ const PMProjects = () => {
   return (
     <div className="dash-layout">
       
-      {/* Sidebar: โครงสร้างเดิมที่คุณต้องการ */}
+      {/* Sidebar - ปรับให้เหมือน Worker/Foreman */}
       <aside className="dash-sidebar">
+        <div className="sidebar-title" style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
+          PM Portal
+        </div>
         <nav className="menu">
-          <button type="button" className="menu-item" style={btnStyle} onClick={() => navigate('/pm', { state: { user } })}>Dashboard</button>
-          <button type="button" className="menu-item" style={btnStyle} onClick={() => navigate('/project-tasks', { state: { user } })}>Tasks</button>
-          
-          {/* Active */}
-          <button type="button" className="menu-item active" style={activeBtnStyle} onClick={() => navigate('/projects', { state: { user } })}>Projects</button>
-          
-          <button type="button" className="menu-item" style={btnStyle}>History</button>
-          <button type="button" className="menu-item" style={btnStyle}>Settings</button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm' || location.pathname === '/dashboard' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm', { state: { user } })}
+          >
+            หน้าหลัก
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/project-tasks' ? 'active' : ''}`} 
+            onClick={() => navigate('/project-tasks', { state: { user } })}
+          >
+            มอบหมายงาน
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/projects' ? 'active' : ''}`} 
+            onClick={() => navigate('/projects', { state: { user } })}
+          >
+            โครงการทั้งหมด
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm-settings' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm-settings', { state: { user } })}
+          >
+            ตั้งค่า
+          </button>
+
+          <button 
+            type="button" 
+            className="menu-item logout-btn" 
+            style={{ marginTop: '20px', color: '#ef4444', background: '#fef2f2', borderColor: '#fee2e2' }}
+            onClick={handleLogout}
+          >
+            ออกจากระบบ
+          </button>
         </nav>
       </aside>
 

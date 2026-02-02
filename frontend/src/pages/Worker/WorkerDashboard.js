@@ -1,38 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// ✅ สำคัญมาก: ต้อง Import CSS ของ Dashboard เข้ามา ไม่งั้นหน้าจะพัง
-import '../general/Dashboard.css'; 
+import '../pm/WKDashboard.css'; 
 
 const WorkerDashboard = () => {
   const navigate = useNavigate();
 
-  const [user, setUser] = useState({ 
-    name: 'ผู้ใช้งาน', 
-    id: '', 
-    role: 'worker' 
-  });
-
+  const [user, setUser] = useState({ name: 'ผู้ใช้งาน', id: '', role: 'worker' });
   const [assignedTask, setAssignedTask] = useState(null); 
   const [loadingTask, setLoadingTask] = useState(false);
 
   useEffect(() => {
-    // โค้ดส่วนนี้โอเคแล้ว ใช้ sessionStorage
     const storedUserStr = sessionStorage.getItem('user');
     if (storedUserStr) {
-      const storedUser = JSON.parse(storedUserStr);
-      setUser(storedUser);
-      fetchAssignedTask(storedUser.id);
+      setUser(JSON.parse(storedUserStr));
+      fetchAssignedTask();
     } else {
-        // ถ้าไม่มี User ใน session ให้ใช้ mock ไปก่อนเพื่อกันหน้าขาว
-       fetchAssignedTask('mock-id');
+       fetchAssignedTask();
     }
   }, []);
 
-  const fetchAssignedTask = async (workerId) => {
+  const fetchAssignedTask = async () => {
     setLoadingTask(true);
     try {
-      // จำลองข้อมูลงานเข้า
       setTimeout(() => {
         setAssignedTask({
             id: 'T-1024',
@@ -40,13 +29,11 @@ const WorkerDashboard = () => {
             location: 'โซน B - งานเทคานชั้น 2',
             foreman: 'หัวหน้าวิชัย',
             date: '08/01/2026',
-            status: 'pending_acceptance' 
+            status: 'pending_acceptance' // เริ่มต้นเป็นรอรับงาน
         });
         setLoadingTask(false);
       }, 500);
-    } catch (err) {
-      setLoadingTask(false);
-    }
+    } catch (err) { setLoadingTask(false); }
   };
 
   const handleAcceptTask = () => {
@@ -56,27 +43,29 @@ const WorkerDashboard = () => {
     }
   };
 
+  // ✅ ฟังก์ชันกดเพื่อไปหน้าส่งงาน (Task Detail)
+  const handleGoToSubmit = () => {
+    navigate('/worker/task-detail', { state: { task: assignedTask } });
+  };
+
   const handleLogout = () => {
-    sessionStorage.clear();
-    navigate('/login');
+    if (window.confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+      sessionStorage.clear();
+      navigate('/login');
+    }
   };
 
   return (
     <div className="dash-layout">
-      
       {/* Sidebar */}
       <aside className="dash-sidebar">
         <nav className="menu">
           <div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
                 Worker Portal
           </div>
-          <button className="menu-item active" onClick={() => navigate('/worker')}>
-            หน้าหลัก
-          </button>
-          <button className="menu-item" onClick={() => navigate('/worker/profile')}>
-            ข้อมูลส่วนตัว
-          </button>
-          <button className="menu-item logout-btn" onClick={handleLogout} style={{ marginTop: '20px', color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}>
+          <button className="menu-item active" onClick={() => navigate('/worker')}>หน้าหลัก</button>
+          <button className="menu-item" onClick={() => navigate('/worker-settings')}>ตั้งค่า</button>
+          <button className="menu-item" onClick={handleLogout} style={{ marginTop: '20px', color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}>
             ออกจากระบบ
           </button>
         </nav>
@@ -84,7 +73,6 @@ const WorkerDashboard = () => {
 
       {/* Main Content */}
       <main className="dash-main">
-        {/* Topbar */}
         <div className="dash-header" style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
              <h1 style={{ margin: 0, fontSize: '24px' }}>สวัสดี, {user.name}</h1>
@@ -94,7 +82,7 @@ const WorkerDashboard = () => {
 
         <div className="dashboard-content" style={{ padding: '30px' }}>
           
-          {/* Status Cards */}
+          {/* ✅ ส่วน Status Cards (ที่เคยหายไป) กลับมาแล้ว */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                 <div style={{ color: '#64748b', fontSize: '14px' }}>สถานะทักษะ</div>
@@ -119,6 +107,7 @@ const WorkerDashboard = () => {
                     ไม่มีงานใหม่
                 </div>
             ) : assignedTask.status === 'pending_acceptance' ? (
+                /* 🔶 สถานะ: งานใหม่ รอการตอบรับ */
                 <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', borderLeft: '5px solid #f59e0b', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
                         <div>
@@ -137,8 +126,28 @@ const WorkerDashboard = () => {
                     </div>
                 </div>
             ) : (
-                <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', border: '1px solid #bbf7d0', color: '#166534' }}>
-                    ✅ คุณได้รับงาน "{assignedTask.project}" แล้ว (รอการประเมินหน้างาน)
+                /* ✅ สถานะ: รับงานแล้ว -> แสดงปุ่มไปหน้าส่งงาน */
+                <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #bbf7d0', borderLeft: '5px solid #22c55e', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px', alignItems: 'center' }}>
+                         <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '20px' }}>✅</span>
+                                <h3 style={{ margin: 0, color: '#15803d' }}>คุณได้รับงานนี้แล้ว</h3>
+                            </div>
+                            <p style={{ margin: 0, color: '#475569' }}>
+                                โครงการ: {assignedTask.project} <br/>
+                                กรุณาดำเนินการและส่งงานเมื่อเสร็จสิ้น
+                            </p>
+                         </div>
+                         <div>
+                            <button 
+                                onClick={handleGoToSubmit}
+                                style={{ padding: '12px 24px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)' }}
+                            >
+                                ดูรายละเอียด / ส่งงาน &rarr;
+                            </button>
+                         </div>
+                    </div>
                 </div>
             )}
           </div>

@@ -15,7 +15,14 @@ exports.findByCitizenId = async (citizenId) => {
   return rows[0];
 };
 
-// สร้าง User ใหม่ (รับค่าก้อนใหญ่จากหน้า 3)
+// ค้นหา User ด้วย ID (จำเป็นสำหรับ Controller)
+exports.findById = async (id) => {
+  const sql = 'SELECT * FROM dbuser WHERE id = ? LIMIT 1';
+  const [rows] = await pool.query(sql, [id]);
+  return rows[0];
+};
+
+// สร้าง User ใหม่ (รับค่าก้อนใหญ่จากหน้าลงทะเบียน)
 exports.create = async (userData) => {
   const {
     citizen_id, full_name, birth_date, age,
@@ -53,15 +60,9 @@ exports.create = async (userData) => {
   return result.insertId;
 };
 
+// เปรียบเทียบรหัสผ่าน
 exports.comparePassword = (password, hash) => {
   return bcrypt.compareSync(password, hash || '');
-};
-
-// 1. ค้นหา User ด้วย ID (จำเป็นสำหรับ Controller)
-exports.findById = async (id) => {
-  const sql = 'SELECT * FROM dbuser WHERE id = ? LIMIT 1';
-  const [rows] = await pool.query(sql, [id]);
-  return rows[0];
 };
 
 // 2. บันทึกคะแนนสอบ (เรียกใช้โดย quizController)
@@ -74,14 +75,19 @@ exports.updateExamScore = async (id, score, fullScore) => {
   await pool.query(sql, [score, fullScore, id]);
 };
 
-// 3. บันทึกผลประเมินและ Level (เรียกใช้โดย assessmentController)
-exports.updateAssessmentResult = async (id, onsiteScore, totalScore, skillLevel, details) => {
-  // หมายเหตุ: onsiteDetails อาจต้องเก็บเป็น JSON string หรือสร้างตารางแยก 
-  // แต่ในที่นี้จะเก็บเฉพาะค่าหลักๆ ก่อน
+// 3. ✅ ปรับปรุง: บันทึกผลประเมินและระดับทักษะ (รองรับเลข 0, 1, 2, 3)
+// เพิ่มพารามิเตอร์ levelNumeric เพื่อใช้ในระบบจัดสรรงาน MILP
+exports.updateAssessmentResult = async (id, onsiteScore, totalScore, levelNumeric, skillLevelLabel) => {
   const sql = `
     UPDATE dbuser 
-    SET onsite_score = ?, total_score = ?, skill_level = ?, status = 'Assessed', assessment_date = NOW()
+    SET onsite_score = ?, 
+        total_score = ?, 
+        level = ?,           -- บันทึกเป็นตัวเลข (0, 1, 2, 3) เพื่อใช้คำนวณ MILP
+        skill_level = ?,     -- บันทึกเป็นข้อความ (Expert, Proficient, etc.) ไว้โชว์หน้าเว็บ
+        status = 'Assessed', 
+        assessment_date = NOW()
     WHERE id = ?
   `;
-  await pool.query(sql, [onsiteScore, totalScore, skillLevel, id]);
+  
+  await pool.query(sql, [onsiteScore, totalScore, levelNumeric, skillLevelLabel, id]);
 };

@@ -1,20 +1,22 @@
 const User = require('../models/User');
 
-// --- 1. Logic คำนวณ (เหมือนเดิม) ---
+// --- 1. Logic คำนวณ (คงไว้ตามโครงเดิมของคุณ) ---
 const getProficiencyLevel = (percentage) => {
     const p = parseFloat(percentage);
-    if (isNaN(p)) return "ไม่ระบุ";
-    if (p >= 80) return "Expert (ผู้เชี่ยวชาญ)";
-    if (p >= 70) return "Proficient (ชำนาญการ)";
-    if (p >= 50) return "Competent (ปฏิบัติงานได้)";
-    return "Needs Improvement (ฝึกหัด)";
+    if (isNaN(p)) return { numeric: 0, label: "ไม่ระบุ" };
+    
+    // ปรับให้คืนค่าทั้ง ตัวเลข (0-3) และ ข้อความ ตามที่คุณต้องการ
+    if (p >= 80) return { numeric: 3, label: "L3: Expert (ผู้เชี่ยวชาญ)" };
+    if (p >= 70) return { numeric: 2, label: "L2: Proficient (ชำนาญการ)" };
+    if (p >= 50) return { numeric: 1, label: "L1: Competent (ปฏิบัติงานได้)" };
+    return { numeric: 0, label: "L0: Needs Improvement (ฝึกหัด)" };
 };
 
 const calculateScoreLogic = (examRaw, examMax, onsiteRaw, onsiteMax) => {
     const safeExamRaw = Number(examRaw) || 0;
     const safeOnsiteRaw = Number(onsiteRaw) || 0;
     const safeExamMax = (examMax && Number(examMax) > 0) ? Number(examMax) : 60;
-    const safeOnsiteMax = (onsiteMax && Number(onsiteMax) > 0) ? Number(onsiteMax) : 100;
+    const safeOnsiteMax = (onsiteMax && Number(onsiteMax) > 0) ? Number(onsiteMax) : 72; // ปรับตาม 18 หัวข้อ x 4 คะแนน
 
     if (safeExamRaw < 0 || safeOnsiteRaw < 0) throw new Error("คะแนนไม่สามารถติดลบได้");
     if (safeExamRaw > safeExamMax) throw new Error(`คะแนนสอบ (${safeExamRaw}) สูงกว่าคะแนนเต็ม (${safeExamMax})`);
@@ -27,11 +29,14 @@ const calculateScoreLogic = (examRaw, examMax, onsiteRaw, onsiteMax) => {
     const onsiteWeighted = onsitePercent * 0.30;
     const totalScore = examWeighted + onsiteWeighted;
 
+    const proficiency = getProficiencyLevel(totalScore);
+
     return {
         examPercent,
         onsitePercent,
         totalScore,
-        level: getProficiencyLevel(totalScore)
+        levelNumeric: proficiency.numeric,
+        levelLabel: proficiency.label
     };
 };
 
@@ -53,18 +58,26 @@ exports.submitAssessment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลช่างในระบบ' });
         }
 
-        // 2. ดึงคะแนนสอบจากข้อมูลช่าง (MySQL คืนค่าเป็น exam_score)
+        // 🛑 2. เพิ่มเงื่อนไขใหม่: ต้องมีคะแนนสอบก่อนถึงจะประเมินได้
+        if (worker.exam_score === null || worker.exam_score === undefined) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'ไม่สามารถประเมินได้: ช่างต้องทำข้อสอบประจำสาขาให้เสร็จสิ้นก่อน' 
+            });
+        }
+
+        // 3. ดึงคะแนนสอบจากข้อมูลช่าง
         const examRaw = worker.exam_score || 0;
         const examMax = worker.exam_full_score || 60; 
 
-        // 3. เรียกใช้ Logic คำนวณ
+        // 4. เรียกใช้ Logic คำนวณ (ใช้ตัวแปรเดิมที่คุณเขียน)
         let result;
         try {
             result = calculateScoreLogic(
                 examRaw, 
                 examMax, 
                 Number(onsiteScore), 
-                Number(onsiteFullScore || 72)
+                Number(onsiteFullScore || 72) // 18 หัวข้อ หัวข้อละ 4 คะแนน
             );
         } catch (logicError) {
             return res.status(400).json({ 
@@ -73,16 +86,16 @@ exports.submitAssessment = async (req, res) => {
             });
         }
 
-        // 4. ✅ แก้ไขตรงนี้: ใช้ฟังก์ชัน MySQL ในการบันทึก
+        // 5. ✅ บันทึกลง MySQL: ส่งค่า level เป็นตัวเลข (0-3) เพื่อใช้ใน MILP
         await User.updateAssessmentResult(
             workerId,
             onsiteScore,
-            result.totalScore,
-            result.level,
-            {} // details (ถ้ามี)
+            result.totalScore.toFixed(2),
+            result.levelNumeric, // ส่งเลข 0, 1, 2, 3
+            result.levelLabel     // ส่งข้อความ L1, L2...
         );
 
-        // 5. ส่งผลสำเร็จกลับไป
+        // 6. ส่งผลสำเร็จกลับไป
         res.status(200).json({
             success: true,
             message: 'ประมวลผลและบันทึกเรียบร้อย',
@@ -91,7 +104,8 @@ exports.submitAssessment = async (req, res) => {
                 examScore: examRaw,
                 onsiteScore: onsiteScore,
                 totalScore: result.totalScore.toFixed(2),
-                level: result.level
+                level: result.levelNumeric,
+                label: result.levelLabel
             }
         });
 

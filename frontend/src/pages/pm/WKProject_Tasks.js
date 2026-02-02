@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { mockUser } from '../../mock/mockData';
-import '../../pages/general/Dashboard.css';
+import '../pm/WKDashboard.css';
 
 const WKProjectTasks = () => {
   const location = useLocation();
@@ -11,6 +11,14 @@ const WKProjectTasks = () => {
   const incomingProject = location.state?.project;
   const user = location.state?.user || { ...mockUser, role: 'Project Manager', name: 'สมชาย ใจดี' };
   
+  // ฟังก์ชัน Logout สำหรับ Sidebar
+  const handleLogout = () => {
+    if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
+      sessionStorage.clear();
+      navigate('/login');
+    }
+  };
+
   // ✅ ข้อมูลงานย่อย (ล้างค่าว่างเสมอเพื่อรอรับงานใหม่)
   const [taskForm, setTaskForm] = useState({
     taskName: '',
@@ -45,12 +53,49 @@ const WKProjectTasks = () => {
 
   return (
     <div className="dash-layout" style={{ background: '#f8fafc', minHeight: '100vh' }}>
-      {/* Sidebar - คลีนตามรูปที่ 2 */}
-      <aside className="dash-sidebar" style={{ boxShadow: '2px 0 10px rgba(0,0,0,0.05)', background: '#ffffff' }}>
+      
+      {/* Sidebar - ปรับให้เหมือน Worker/Foreman */}
+      <aside className="dash-sidebar">
+        <div className="sidebar-title" style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
+          PM Portal
+        </div>
         <nav className="menu">
-          <button type="button" className="menu-item" onClick={() => navigate('/pm')}>Dashboard</button>
-          <button type="button" className="menu-item active" style={{ background: '#3498db', color: 'white' }}>Tasks</button>
-          <button type="button" className="menu-item" onClick={() => navigate('/projects')}>Projects</button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm' || location.pathname === '/dashboard' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm', { state: { user } })}
+          >
+            หน้าหลัก
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/project-tasks' || location.pathname === '/define-tasks' ? 'active' : ''}`} 
+            onClick={() => navigate('/project-tasks', { state: { user } })}
+          >
+            มอบหมายงาน
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/projects' ? 'active' : ''}`} 
+            onClick={() => navigate('/projects', { state: { user } })}
+          >
+            โครงการทั้งหมด
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm-settings' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm-settings', { state: { user } })}
+          >
+            ตั้งค่า
+          </button>
+          <button 
+            type="button" 
+            className="menu-item logout-btn" 
+            style={{ marginTop: '20px', color: '#ef4444', background: '#fef2f2', borderColor: '#fee2e2' }}
+            onClick={handleLogout}
+          >
+            ออกจากระบบ
+          </button>
         </nav>
       </aside>
 

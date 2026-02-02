@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { mockUser } from '../../mock/mockData';
-import '../../pages/general/Dashboard.css';
+import '../pm/WKDashboard.css';
 
 // ✅ ถ้ามึงก๊อปไปลงไฟล์ WKProject_Tasks.js ให้เปลี่ยนชื่อเป็น const WKProjectTasks = () => {
 const WKCreateProject = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = { ...mockUser, role: 'Project Manager', name: 'สมชาย ใจดี' };
+
+  // ฟังก์ชัน Logout สำหรับ Sidebar
+  const handleLogout = () => {
+    if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
+      sessionStorage.clear();
+      navigate('/login');
+    }
+  };
 
   const [loading, setLoading] = useState(false);
   const [projectInfo, setProjectInfo] = useState({
@@ -48,11 +57,49 @@ const WKCreateProject = () => {
 
   return (
     <div className="dash-layout" style={{ background: '#f8fafc', minHeight: '100vh' }}>
-      <aside className="dash-sidebar" style={{ boxShadow: '2px 0 10px rgba(0,0,0,0.05)', background: '#ffffff' }}>
+      
+      {/* Sidebar - ปรับให้เหมือน Worker/Foreman */}
+      <aside className="dash-sidebar">
+        <div className="sidebar-title" style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
+          PM Portal
+        </div>
         <nav className="menu">
-          <button type="button" className="menu-item" onClick={() => navigate('/pm')}>Dashboard</button>
-          <button type="button" className="menu-item active" style={{ background: '#3498db', color: 'white' }}>Tasks</button>
-          <button type="button" className="menu-item" onClick={() => navigate('/projects')}>Projects</button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm' || location.pathname === '/dashboard' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm', { state: { user } })}
+          >
+            หน้าหลัก
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/project-tasks' ? 'active' : ''}`} 
+            onClick={() => navigate('/project-tasks', { state: { user } })}
+          >
+            มอบหมายงาน
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/projects' ? 'active' : ''}`} 
+            onClick={() => navigate('/projects', { state: { user } })}
+          >
+            โครงการทั้งหมด
+          </button>
+           <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm-settings' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm-settings', { state: { user } })}
+          >
+            ตั้งค่า
+          </button>
+          <button 
+            type="button" 
+            className="menu-item logout-btn" 
+            style={{ marginTop: '20px', color: '#ef4444', background: '#fef2f2', borderColor: '#fee2e2' }}
+            onClick={handleLogout}
+          >
+            ออกจากระบบ
+          </button>
         </nav>
       </aside>
 
@@ -77,7 +124,7 @@ const WKCreateProject = () => {
                 
                 {/* แถวที่ 1: ชื่อโครงการ และ ประเภทโครงการ */}
                 <div>
-                  <label style={labelStyle}>ชื่อโครงการ / โครงงาน</label>
+                  <label style={labelStyle}>ชื่อโครงการ</label>
                   <input className="input" name="projectName" placeholder="ระบุชื่อโครงการ" value={projectInfo.projectName} onChange={handleProjectChange} required style={inputStyle} />
                 </div>
 

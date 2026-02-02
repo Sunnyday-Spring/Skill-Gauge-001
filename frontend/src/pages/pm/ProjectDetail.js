@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { mockUser } from '../../mock/mockData';
-import '../../pages/general/Dashboard.css';
+import '../pm/WKDashboard.css';
 
 const ProjectDetail = () => {
   const location = useLocation();
@@ -12,6 +12,14 @@ const ProjectDetail = () => {
   
   // ✅ 2. ดึงข้อมูล user เพื่อเช็ค Role (ถ้าไม่มีให้ Default เป็น PM เพื่อความปลอดภัย)
   const user = location.state?.user || { ...mockUser, role: 'Foreman' };
+
+  // ฟังก์ชัน Logout สำหรับ Sidebar
+  const handleLogout = () => {
+    if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
+      sessionStorage.clear();
+      navigate('/login');
+    }
+  };
 
   // ✅ 3. State สำหรับช่องค้นหางานย่อย
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,26 +77,48 @@ const ProjectDetail = () => {
 
   return (
     <div className="dash-layout">
-      {/* ✅ 9. Sidebar: ปรับเมนูตาม Role เพื่อไม่ให้หลุดไปหน้าของคนอื่น */}
+      {/* Sidebar - ปรับให้เหมือน Worker/Foreman */}
       <aside className="dash-sidebar">
-        <div className="sidebar-header">
-          <h2>{user.role}</h2>
+        <div className="sidebar-title" style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
+          PM Portal
         </div>
         <nav className="menu">
-          {user.role === 'Foreman' ? (
-            <>
-              <button className="menu-item" onClick={() => navigate('/foreman')}> Dashboard</button>
-              <button className="menu-item" onClick={() => navigate('/foreman-reports')}> Reporting</button>
-              <button className="menu-item active" onClick={() => navigate('/project-detail')}>Projects</button>
-            </>
-          ) : (
-            <>
-              <button className="menu-item" onClick={() => navigate('/pm')}>Dashboard</button>
-              <button className="menu-item" onClick={() => navigate('/project-tasks')}> Tasks</button>
-              <button className="menu-item active" onClick={() => navigate('/projects')}> Projects</button>
-            </>
-          )}
-          <button className="menu-item logout" style={{ marginTop: 'auto' }} onClick={() => navigate('/login')}>Logout</button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/pm' || location.pathname === '/dashboard' ? 'active' : ''}`} 
+            onClick={() => navigate('/pm', { state: { user } })}
+          >
+            หน้าหลัก
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/project-tasks' ? 'active' : ''}`} 
+            onClick={() => navigate('/project-tasks', { state: { user } })}
+          >
+            มอบหมายงาน
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/projects' ? 'active' : ''}`} 
+            onClick={() => navigate('/projects', { state: { user } })}
+          >
+            โครงการทั้งหมด
+          </button>
+          <button 
+            type="button" 
+            className={`menu-item ${location.pathname === '/PMSettings' ? 'active' : ''}`} 
+            onClick={() => navigate('/PMSettings', { state: { user } })}
+          >
+            ตั้งค่า
+          </button>
+          <button 
+            type="button" 
+            className="menu-item logout-btn" 
+            style={{ marginTop: '20px', color: '#ef4444', background: '#fef2f2', borderColor: '#fee2e2' }}
+            onClick={handleLogout}
+          >
+            ออกจากระบบ
+          </button>
         </nav>
       </aside>
 

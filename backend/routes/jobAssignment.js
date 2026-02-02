@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 
-// แก้ไขจุดที่ 1: เปลี่ยนจากรับก้อนใหญ่ เป็นดึงเฉพาะ 'protect' มาใช้
+// แก้ไขจุดที่ 1: ดึงเฉพาะ 'protect' มาใช้ตามโครงเดิมของคุณ
 const { protect } = require('../middleware/authMiddleware'); 
 
 /**
- * 1. ฟังก์ชันคำนวณน้ำหนักความยาก (wj, hj)
+ * 1. ฟังก์ชันคำนวณน้ำหนักความยาก (wj, hj) (คงไว้ตามเดิมของคุณ)
  */
 function calculateJobWeights(description = "") {
     let wj = 1.0; 
@@ -23,16 +23,15 @@ function calculateJobWeights(description = "") {
 }
 
 /**
- * 2. Logic การมอบหมายงาน (Solver)
+ * 2. Logic การมอบหมายงาน (Solver) - (คงไว้ตามเดิมทั้ง 3 PATH)
  */
 async function solveAssignments() {
     const [workers] = await pool.query(`
-        SELECT u.id, u.name, u.skill_type, u.level, u.experience_years, u.teamwork_score,
+        SELECT u.id, u.full_name as name, u.skill_type, u.level, u.experience_years, u.teamwork_score,
                u.exam_score as quiz_score 
         FROM dbuser u 
         WHERE u.role = 'worker'
     `);
-    // หมายเหตุ: แก้ query ให้ดึงจาก dbuser และ map exam_score เป็น quiz_score เพื่อให้ logic เดิมทำงานได้
 
     const [jobs] = await pool.query(`
         SELECT id, job_name, job_type, description, required_level 
@@ -48,7 +47,7 @@ async function solveAssignments() {
     const pendingEvalWorkers = workers.filter(w => w.quiz_score !== null && (!w.level || w.level === 0));
     const qualifiedWorkers = workers.filter(w => w.level && w.level > 0);
 
-    // PATH 1
+    // --- PATH 1: สำหรับช่างที่ยังไม่สอบ ---
     for (const worker of noQuizWorkers) {
         const easyJob = jobs.find(j => 
             !assignedJobIds.has(j.id) && 
@@ -66,7 +65,7 @@ async function solveAssignments() {
         }
     }
 
-    // PATH 2
+    // --- PATH 2: สำหรับช่างที่สอบแล้วแต่รอประเมินหน้างาน ---
     for (const worker of pendingEvalWorkers) {
         const matchJob = jobs.find(j => 
             !assignedJobIds.has(j.id) && 
@@ -84,7 +83,7 @@ async function solveAssignments() {
         }
     }
 
-    // PATH 3
+    // --- PATH 3: สำหรับช่างที่มีระดับทักษะชัดเจน (MILP Optimal) ---
     const remainingJobs = jobs.filter(j => !assignedJobIds.has(j.id));
     remainingJobs.sort((a, b) => (b.required_level || 0) - (a.required_level || 0));
 
@@ -127,9 +126,39 @@ async function solveAssignments() {
 }
 
 /**
- * 3. ROUTER - จุดเชื่อม API
+ * 3. ✅ ฟังก์ชันเพิ่มเติม: PM มอบหมายงานย่อยเอง (Manual Assignment)
  */
-// แก้ไขจุดที่ 2: ใช้ 'protect' แทน 'authMiddleware'
+router.post('/assign-manual', protect, async (req, res) => {
+    try {
+        const { jobId, workerId } = req.body;
+
+        // เช็คข้อมูลเบื้องต้น
+        const [worker] = await pool.query('SELECT skill_type FROM dbuser WHERE id = ?', [workerId]);
+        const [job] = await pool.query('SELECT job_type FROM jobs WHERE id = ?', [jobId]);
+
+        if (!worker[0] || !job[0]) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลช่างหรือหน้างาน' });
+        }
+
+        // ตรวจสอบความถูกต้องของสาขาช่างก่อนมอบหมาย
+        if (worker[0].skill_type !== job[0].job_type) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `สาขาช่าง (${worker[0].skill_type}) ไม่ตรงกับประเภทงาน (${job[0].job_type})` 
+            });
+        }
+
+        await pool.query('UPDATE jobs SET status = "assigned", worker_id = ? WHERE id = ?', [workerId, jobId]);
+
+        res.status(200).json({ success: true, message: 'PM มอบหมายงานให้ช่างเรียบร้อยแล้ว' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * 4. ROUTER - จุดเชื่อม API สำหรับระบบอัตโนมัติ (คงไว้ตามเดิม)
+ */
 router.post('/run', protect, async (req, res) => {
     try {
         const assignments = await solveAssignments();

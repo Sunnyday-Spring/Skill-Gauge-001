@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../pages/general/Dashboard.css';
+import '../pm/WKDashboard.css';
 
 const AdminAuditLog = () => {
   return (

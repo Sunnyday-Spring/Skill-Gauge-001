@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../pages/general/Dashboard.css';
+import '../pm/WKDashboard.css';
 import './AdminQuizBank.css';
 
 const CATEGORY_OPTIONS = [
