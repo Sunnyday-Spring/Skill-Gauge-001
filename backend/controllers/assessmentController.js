@@ -1,11 +1,11 @@
 const User = require('../models/User');
+const Assessment = require('../models/Assessment');
 
 // --- 1. Logic คำนวณ (คืนค่า Numeric 0-3 เพื่อใช้ใน MILP และการเลื่อนระดับ) ---
 const getProficiencyLevel = (percentage) => {
     const p = parseFloat(percentage);
     if (isNaN(p)) return { numeric: 0, label: "ไม่ระบุ" };
     
-    // ตัดเกรดตามเกณฑ์ Rubric 0-3
     if (p >= 80) return { numeric: 3, label: "L3: Expert (ผู้เชี่ยวชาญ)" };
     if (p >= 70) return { numeric: 2, label: "L2: Proficient (ชำนาญการ)" };
     if (p >= 50) return { numeric: 1, label: "L1: Competent (ปฏิบัติงานได้)" };
@@ -18,98 +18,70 @@ const calculateScoreLogic = (examRaw, examMax, onsiteRaw, onsiteMax) => {
     const safeExamMax = (Number(examMax) > 0) ? Number(examMax) : 60;
     const safeOnsiteMax = (Number(onsiteMax) > 0) ? Number(onsiteMax) : 72;
 
-    // ตรวจสอบความถูกต้องของคะแนน (กันยิงค่าแปลกๆ มา)
     if (safeExamRaw < 0 || safeOnsiteRaw < 0) throw new Error("คะแนนไม่สามารถติดลบได้");
     
-    // คำนวณเปอร์เซ็นต์
+    // คำนวณเปอร์เซ็นต์พื้นฐาน
     const examPercent = (safeExamRaw / safeExamMax) * 100;
     const onsitePercent = (safeOnsiteRaw / safeOnsiteMax) * 100;
 
-    // ถ่วงน้ำหนัก 70:30 ตามที่คุณต้องการ
-    const totalScore = (examPercent * 0.70) + (onsitePercent * 0.30);
+    // คำนวณคะแนนตาม Weight (70:30) เพื่อเก็บลงตารางใหม่
+    const theoryWeighted = (examPercent * 0.70);    // เต็ม 70
+    const practicalWeighted = (onsitePercent * 0.30); // เต็ม 30
+    const totalScore = theoryWeighted + practicalWeighted;
+
     const proficiency = getProficiencyLevel(totalScore);
 
     return {
-        examPercent: examPercent.toFixed(2),
-        onsitePercent: onsitePercent.toFixed(2),
-        totalScore: totalScore,
+        theoryWeighted: theoryWeighted.toFixed(2),
+        practicalWeighted: practicalWeighted.toFixed(2),
+        totalScore: totalScore.toFixed(2),
         levelNumeric: proficiency.numeric,
         levelLabel: proficiency.label
     };
 };
 
-// --- 2. ฟังก์ชันหลักสำหรับรับค่าและบันทึก ---
 exports.submitAssessment = async (req, res) => {
     try {
         const { workerId, onsiteScore, onsiteFullScore } = req.body;
 
-        // Validation พื้นฐาน
-        if (!workerId || onsiteScore === undefined) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'ข้อมูลไม่ครบถ้วน: กรุณาระบุ workerId และ onsiteScore' 
-            });
+        // 1. ดึงคะแนนทฤษฎีที่บันทึกไว้ก่อนหน้าจากตาราง skill_assessment_results
+        // หรือดึงจาก dbuser (ตามที่ quizController บันทึกไว้)
+        const worker = await User.findById(workerId); 
+        if (!worker || worker.exam_score === null) {
+            return res.status(403).json({ success: false, message: 'ช่างต้องทำข้อสอบทฤษฎีก่อน' });
         }
 
-        // 1. ค้นหาช่าง
-        const worker = await User.findById(workerId);
-        if (!worker) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลช่างในระบบ' });
-        }
+        // 2. คำนวณ Logic 70:30
+        const examMax = worker.exam_full_score || 60;
+        const practicalMax = onsiteFullScore || 72;
 
-        // 🛑 2. เงื่อนไขบังคับ: ต้องมีคะแนนสอบก่อน (เพื่อใช้คำนวณ 70%)
-        // เช็คทั้งค่า null และ undefined เพื่อความปลอดภัยเวลาเทส
-        if (worker.exam_score === null || worker.exam_score === undefined) {
-            return res.status(403).json({ 
-                success: false, 
-                message: `ไม่สามารถประเมินได้: ช่างสาขา ${worker.technician_type || 'ทั่วไป'} ต้องทำข้อสอบทฤษฎีก่อน` 
-            });
-        }
+        const theoryWeighted = (worker.exam_score / examMax) * 70;
+        const practicalWeighted = (onsiteScore / practicalMax) * 30;
+        const totalScore = theoryWeighted + practicalWeighted;
 
-        // 3. ดึงคะแนนสอบจาก DB (ที่บันทึกไว้จาก Quiz Controller)
-        const examRaw = worker.exam_score;
-        const examMax = worker.exam_full_score || 60; 
+        // 3. ตัดเกรด L0 - L3
+        const result = getProficiencyLevel(totalScore);
 
-        // 4. คำนวณผลลัพธ์
-        let result;
-        try {
-            result = calculateScoreLogic(
-                examRaw, 
-                examMax, 
-                onsiteScore, 
-                onsiteFullScore || 72 
-            );
-        } catch (logicError) {
-            return res.status(400).json({ success: false, message: logicError.message });
-        }
-
-        // 5. ✅ บันทึกลง MySQL: เขียนทับค่าเดิมเสมอเพื่อรองรับการ "เลื่อนระดับ"
-        await User.updateAssessmentResult(
+        // 4. ✅ บันทึกลงตาราง skill_assessment_results
+        await Assessment.updateAssessmentResult(
             workerId,
-            onsiteScore,
-            result.totalScore.toFixed(2),
-            result.levelNumeric, // ส่ง 0, 1, 2, 3 เข้าฟิลด์ level
-            result.levelLabel     // ส่งข้อความ L1, L2... เข้าฟิลด์ skill_level
+            theoryWeighted.toFixed(2),    // บันทึกคะแนนทฤษฎีที่ถ่วงน้ำหนักแล้ว
+            practicalWeighted.toFixed(2), // บันทึกคะแนนปฏิบัติที่ถ่วงน้ำหนักแล้ว
+            totalScore.toFixed(2),        // คะแนนรวม 100%
+            result.label                  // "L3: Expert", "L2: Proficient", ฯลฯ
         );
 
-        // 6. ส่งผลลัพธ์กลับไปให้ Foreman ดู
         res.status(200).json({
             success: true,
-            message: `บันทึกระดับของช่างสาขา ${worker.technician_type || 'ทั่วไป'} เรียบร้อย`,
+            message: `ประเมินระดับช่าง ${worker.full_name} สำเร็จ`,
             data: {
-                name: worker.full_name,
-                totalScore: result.totalScore.toFixed(2),
-                level: result.levelNumeric,
-                label: result.levelLabel,
-                calculation: {
-                    theory: `${result.examPercent}% (weight 70%)`,
-                    onsite: `${result.onsitePercent}% (weight 30%)`
-                }
+                level: result.numeric,
+                label: result.label,
+                totalScore: totalScore.toFixed(2)
             }
         });
 
     } catch (error) {
-        console.error("System Error:", error);
-        res.status(500).json({ success: false, message: 'Internal Server Error: ' + error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };

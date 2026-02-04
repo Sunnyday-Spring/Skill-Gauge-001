@@ -58,7 +58,6 @@ const ForemanDashboard = () => {
             
             <button className="menu-item active" onClick={() => navigate('/foreman')}>Dashboard</button>
             <button className="menu-item" onClick={() => navigate('/foreman-reports')}>รายงานสรุปงาน</button>
-            <button className="menu-item" onClick={() => navigate('/project-detail')}>My Projects</button>
             <button className="menu-item" onClick={() => navigate('/foreman-settings')}>ตั้งค่า</button>
 
             <button 
