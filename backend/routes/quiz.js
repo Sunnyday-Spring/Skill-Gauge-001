@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-// เรียกใช้ Controller ที่เราทำไว้
 const { getExamPaper, submitExam } = require('../controllers/quizController');
 
 // 1. ดึงชุดข้อสอบ (GET)
