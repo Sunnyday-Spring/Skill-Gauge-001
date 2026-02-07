@@ -1,87 +1,107 @@
 const User = require('../models/User');
 const Assessment = require('../models/Assessment');
+const pool = require('../config/db'); // ใช้สำหรับ Update Level โดยตรง
 
-// --- 1. Logic คำนวณ (คืนค่า Numeric 0-3 เพื่อใช้ใน MILP และการเลื่อนระดับ) ---
-const getProficiencyLevel = (percentage) => {
-    const p = parseFloat(percentage);
-    if (isNaN(p)) return { numeric: 0, label: "ไม่ระบุ" };
-    
-    if (p >= 80) return { numeric: 3, label: "L3: Expert (ผู้เชี่ยวชาญ)" };
-    if (p >= 70) return { numeric: 2, label: "L2: Proficient (ชำนาญการ)" };
-    if (p >= 50) return { numeric: 1, label: "L1: Competent (ปฏิบัติงานได้)" };
-    return { numeric: 0, label: "L0: Needs Improvement (ฝึกหัด)" };
+// --- 1. Logic ตรวจสอบการผ่านเกณฑ์ 70% เพื่อไต่ระดับ ---
+const checkLevelPassStatus = (totalScore, targetLevel) => {
+    const score = parseFloat(totalScore);
+    const level = parseInt(targetLevel);
+    const passingCriteria = 70; // เกณฑ์ผ่านคงที่ที่ 70% ทุกระดับ
+
+    if (score >= passingCriteria) {
+        return { 
+            isPass: true, 
+            numeric: level, 
+            label: `L${level}: ผ่านเกณฑ์ (Expertise Level ${level})` 
+        };
+    } else {
+        // ถ้าไม่ผ่าน ให้คงระดับเดิมไว้ (numeric: level - 1) 
+        // แต่ถ้าเป็นระดับ 1 แล้วไม่ผ่าน ก็จะอยู่ที่ระดับ 0
+        return { 
+            isPass: false, 
+            numeric: Math.max(0, level - 1), 
+            label: `L${level}: ไม่ผ่านเกณฑ์ (ได้ ${score.toFixed(2)}% ต้องได้อย่างน้อย ${passingCriteria}%)` 
+        };
+    }
 };
 
-const calculateScoreLogic = (examRaw, examMax, onsiteRaw, onsiteMax) => {
-    const safeExamRaw = Number(examRaw) || 0;
-    const safeOnsiteRaw = Number(onsiteRaw) || 0;
-    const safeExamMax = (Number(examMax) > 0) ? Number(examMax) : 60;
-    const safeOnsiteMax = (Number(onsiteMax) > 0) ? Number(onsiteMax) : 72;
-
-    if (safeExamRaw < 0 || safeOnsiteRaw < 0) throw new Error("คะแนนไม่สามารถติดลบได้");
-    
-    // คำนวณเปอร์เซ็นต์พื้นฐาน
-    const examPercent = (safeExamRaw / safeExamMax) * 100;
-    const onsitePercent = (safeOnsiteRaw / safeOnsiteMax) * 100;
-
-    // คำนวณคะแนนตาม Weight (70:30) เพื่อเก็บลงตารางใหม่
-    const theoryWeighted = (examPercent * 0.70);    // เต็ม 70
-    const practicalWeighted = (onsitePercent * 0.30); // เต็ม 30
-    const totalScore = theoryWeighted + practicalWeighted;
-
-    const proficiency = getProficiencyLevel(totalScore);
-
-    return {
-        theoryWeighted: theoryWeighted.toFixed(2),
-        practicalWeighted: practicalWeighted.toFixed(2),
-        totalScore: totalScore.toFixed(2),
-        levelNumeric: proficiency.numeric,
-        levelLabel: proficiency.label
-    };
-};
-
+// --- 2. ฟังก์ชันหลักในการบันทึกผลการประเมิน ---
 exports.submitAssessment = async (req, res) => {
     try {
-        const { workerId, onsiteScore, onsiteFullScore } = req.body;
+        // targetLevel คือระดับที่เขามาสอบเพื่อเลื่อนขั้น (เช่น กำลังสอบเพื่อเป็น L2)
+        const { workerId, onsiteScore, onsiteFullScore, targetLevel = 1 } = req.body;
 
-        // 1. ดึงคะแนนทฤษฎีที่บันทึกไว้ก่อนหน้าจากตาราง skill_assessment_results
-        // หรือดึงจาก dbuser (ตามที่ quizController บันทึกไว้)
-        const worker = await User.findById(workerId); 
-        if (!worker || worker.exam_score === null) {
-            return res.status(403).json({ success: false, message: 'ช่างต้องทำข้อสอบทฤษฎีก่อน' });
+        if (!workerId || onsiteScore === undefined) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุ workerId และคะแนนหน้างาน' });
         }
 
-        // 2. คำนวณ Logic 70:30
-        const examMax = worker.exam_full_score || 60;
-        const practicalMax = onsiteFullScore || 72;
+        // 1. ดึงข้อมูลช่าง และดึงคะแนนทฤษฎี (70%) จากตาราง skill_assessment_results
+        const [worker, theoryData] = await Promise.all([
+            User.findById(workerId),
+            Assessment.getTheoryScore(workerId)
+        ]);
 
-        const theoryWeighted = (worker.exam_score / examMax) * 70;
-        const practicalWeighted = (onsiteScore / practicalMax) * 30;
+        if (!worker) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลช่างในระบบ' });
+        }
+
+        if (!theoryData || theoryData.theory_score === null) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `ช่าง ${worker.full_name} ยังไม่มีข้อมูลคะแนนสอบทฤษฎีในระบบประเมิน` 
+            });
+        }
+
+        // 2. คำนวณคะแนนปฏิบัติ (30%)
+        const safeOnsiteRaw = Number(onsiteScore) || 0;
+        const safeOnsiteMax = (Number(onsiteFullScore) > 0) ? Number(onsiteFullScore) : 72;
+        const practicalWeighted = (safeOnsiteRaw / safeOnsiteMax) * 30;
+
+        // ดึงคะแนนทฤษฎีที่ถ่วงน้ำหนัก 70% มาแล้วจากฐานข้อมูล
+        const theoryWeighted = parseFloat(theoryData.theory_score);
         const totalScore = theoryWeighted + practicalWeighted;
 
-        // 3. ตัดเกรด L0 - L3
-        const result = getProficiencyLevel(totalScore);
+        // 3. ตรวจสอบสถานะการผ่าน (ไต่ระดับ)
+        const resultStatus = checkLevelPassStatus(totalScore, targetLevel);
 
-        // 4. ✅ บันทึกลงตาราง skill_assessment_results
+        // 4. บันทึกผลลัพธ์ลงตาราง skill_assessment_results
+        // บันทึกทั้งคะแนนทฤษฎีเดิม คะแนนปฏิบัติใหม่ และระดับที่คำนวณได้
         await Assessment.updateAssessmentResult(
             workerId,
-            theoryWeighted.toFixed(2),    // บันทึกคะแนนทฤษฎีที่ถ่วงน้ำหนักแล้ว
-            practicalWeighted.toFixed(2), // บันทึกคะแนนปฏิบัติที่ถ่วงน้ำหนักแล้ว
-            totalScore.toFixed(2),        // คะแนนรวม 100%
-            result.label                  // "L3: Expert", "L2: Proficient", ฯลฯ
+            theoryWeighted,
+            parseFloat(practicalWeighted.toFixed(2)),
+            parseFloat(totalScore.toFixed(2)),
+            resultStatus.label
         );
+
+        // 5. หากสอบผ่าน (isPass: true) ให้ทำการ Update ระดับล่าสุดลงในตาราง dbuser
+        // เพื่อให้ระบบมอบหมายงาน (Job Assignment) ดึงไปใช้งานได้ทันที
+        if (resultStatus.isPass) {
+            const updateLevelSql = 'UPDATE dbuser SET level = ? WHERE id = ?';
+            await pool.query(updateLevelSql, [resultStatus.numeric, workerId]);
+        }
 
         res.status(200).json({
             success: true,
-            message: `ประเมินระดับช่าง ${worker.full_name} สำเร็จ`,
+            message: resultStatus.isPass 
+                ? `ยินดีด้วย! ${worker.full_name} ผ่านการประเมินระดับ ${targetLevel}`
+                : `ผลการประเมิน ${worker.full_name} ไม่ผ่านเกณฑ์ระดับ ${targetLevel}`,
             data: {
-                level: result.numeric,
-                label: result.label,
-                totalScore: totalScore.toFixed(2)
+                workerId: workerId,
+                name: worker.full_name,
+                isPass: resultStatus.isPass,
+                totalScore: parseFloat(totalScore.toFixed(2)),
+                finalLevel: resultStatus.numeric,
+                label: resultStatus.label,
+                breakdown: {
+                    theory70: theoryWeighted,
+                    practical30: parseFloat(practicalWeighted.toFixed(2))
+                }
             }
         });
 
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error("Submit Assessment Error:", error);
+        res.status(500).json({ success: false, message: 'Internal Server Error: ' + error.message });
     }
 };

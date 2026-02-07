@@ -1,7 +1,13 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
-// --- ส่วนการค้นหาข้อมูล (Read) ---
+// --- 1. ส่วนการค้นหาข้อมูล ---
+
+exports.findById = async (id) => {
+  const sql = 'SELECT * FROM dbuser WHERE id = ? LIMIT 1';
+  const [rows] = await pool.query(sql, [id]);
+  return rows[0];
+};
 
 exports.findByEmail = async (email) => {
   const sql = 'SELECT * FROM dbuser WHERE email = ? LIMIT 1';
@@ -15,13 +21,7 @@ exports.findByCitizenId = async (citizenId) => {
   return rows[0];
 };
 
-exports.findById = async (id) => {
-  const sql = 'SELECT * FROM dbuser WHERE id = ? LIMIT 1';
-  const [rows] = await pool.query(sql, [id]);
-  return rows[0];
-};
-
-// --- ส่วนการสร้างและตรวจสอบรหัสผ่าน (Auth) ---
+// --- 2. ส่วนการจัดการผู้ใช้งาน (Auth & Create) ---
 
 exports.create = async (userData) => {
   const {
@@ -40,8 +40,8 @@ exports.create = async (userData) => {
       address_id_card, sub_district, district, province, zip_code,
       address_current, card_issue_date, card_expiry_date,
       role, technician_type, experience_years,
-      email, password
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      email, password, level
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
   `;
 
   const [result] = await pool.query(sql, [
@@ -59,20 +59,17 @@ exports.comparePassword = (password, hash) => {
   return bcrypt.compareSync(password, hash || '');
 };
 
-// --- ส่วนการสอบทฤษฎี (Quiz Score) ---
+// --- 3. ส่วนการจัดการระดับ (Level Management) ---
 
-exports.updateExamScore = async (id, score, fullScore) => {
-  const sql = `
-    UPDATE dbuser 
-    SET exam_score = ?, 
-        exam_full_score = ?, 
-        exam_date = NOW() 
-    WHERE id = ?
-  `;
-  // ใส่ Number() เพื่อกันเหนียวว่าค่าที่ส่งมาจะเป็นตัวเลขแน่ๆ
-  await pool.query(sql, [Number(score), Number(fullScore || 60), id]);
+/**
+ * อัปเดตระดับทักษะของช่าง (ใช้เรียกหลังประเมินผ่าน)
+ */
+exports.updateLevel = async (id, level) => {
+  const sql = 'UPDATE dbuser SET level = ? WHERE id = ?';
+  await pool.query(sql, [level, id]);
 };
 
-/** * หมายเหตุ: ฟังก์ชัน updateAssessmentResult ถูกย้ายไปที่ models/Assessment.js แล้ว 
- * เพื่อแยกหน้าที่การทำงานให้เป็นสัดส่วน (Separation of Concerns)
+/**
+ * หมายเหตุ: คะแนนสอบทฤษฎีและปฏิบัติทั้งหมดถูกย้ายไปจัดการใน 
+ * models/Assessment.js และตาราง skill_assessment_results แล้ว
  */
