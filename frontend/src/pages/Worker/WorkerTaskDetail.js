@@ -1,150 +1,161 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import '../pm/WKDashboard.css';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../pm/WKDashboard.css'; 
 
-const WorkerTaskDetail = () => {
+const WorkerDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+
+  const [user, setUser] = useState({ name: 'ผู้ใช้งาน', id: '', role: 'worker', skillLevel: 1 });
+  const [assignedTask, setAssignedTask] = useState(null); 
+  const [loadingTask, setLoadingTask] = useState(false);
   
-  // รับข้อมูลงานที่ส่งมาจากหน้า Dashboard
-  const task = location.state?.task;
+  // ✅ ตัวแปรเช็คสถานะว่าทำข้อสอบเสร็จหรือยัง
+  const [isExamCompleted, setIsExamCompleted] = useState(false);
 
-  // State สำหรับฟอร์มส่งงาน
-  const [submission, setSubmission] = useState({
-    description: '',
-    photo: null
-  });
-
-  // ถ้าไม่มีข้อมูลงาน (เช่น พิมพ์ URL เข้ามาเอง) ให้เด้งกลับ
-  if (!task) {
-    return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <h3>ไม่พบข้อมูลงาน</h3>
-        <button onClick={() => navigate('/worker')} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-            กลับหน้าหลัก
-        </button>
-      </div>
-    );
-  }
-
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setSubmission({ ...submission, photo: e.target.files[0].name });
+  useEffect(() => {
+    const storedUserStr = sessionStorage.getItem('user');
+    if (storedUserStr) {
+      const userData = JSON.parse(storedUserStr);
+      setUser(userData);
+      
+      // ✅ เช็คจากข้อมูล user ถ้ามีคะแนนสอบแล้ว ให้ล็อคข้อสอบทันที
+      // (มึงสามารถเปลี่ยนเงื่อนไขตรงนี้ตามชื่อฟิลด์จริงใน DB ของมึงได้ เช่น userData.is_tested)
+      if (userData.exam_score !== null && userData.exam_score !== undefined) {
+        setIsExamCompleted(true);
+      }
     }
+    fetchAssignedTask();
+  }, []);
+
+  const fetchAssignedTask = async () => {
+    setLoadingTask(true);
+    try {
+      // จำลองดึงงานที่ได้รับมอบหมาย
+      setTimeout(() => {
+        setAssignedTask({
+            id: 'T-1024',
+            project: 'โครงการหมู่บ้านจัดสรร The Zenith',
+            location: 'โซน B - งานเทคานชั้น 2',
+            foreman: 'หัวหน้าวิชัย',
+            date: '08/01/2026',
+            status: 'accepted' 
+        });
+        setLoadingTask(false);
+      }, 500);
+    } catch (err) { setLoadingTask(false); }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // บันทึกข้อมูลลง LocalStorage (จำลองการส่งเข้า Server)
-    const existingSubmissions = JSON.parse(localStorage.getItem('worker_submissions') || '[]');
-    const newSubmission = {
-        taskId: task.id,
-        project: task.project,
-        workerName: 'คุณสมชาย (User)', // จริงๆ ต้องดึงจาก Session
-        ...submission,
-        status: 'Pending Review',
-        submittedAt: new Date().toLocaleString()
-    };
-    
-    existingSubmissions.push(newSubmission);
-    localStorage.setItem('worker_submissions', JSON.stringify(existingSubmissions));
-
-    alert("✅ ส่งงานเรียบร้อยแล้ว! หัวหน้างานจะทำการตรวจสอบต่อไป");
-    navigate('/worker');
+  const handleLogout = () => {
+    if (window.confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+      sessionStorage.clear();
+      navigate('/login');
+    }
   };
 
   return (
     <div className="dash-layout">
-      {/* Sidebar (ย่อ) */}
+      {/* Sidebar */}
       <aside className="dash-sidebar">
         <nav className="menu">
-            <div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>Worker Portal</div>
-            <button className="menu-item" onClick={() => navigate('/worker')}>&larr; กลับหน้าหลัก</button>
+          <div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
+                Worker Portal
+          </div>
+          <button className="menu-item active" onClick={() => navigate('/worker')}>หน้าหลัก</button>
+          <button className="menu-item" onClick={handleLogout} style={{ marginTop: '20px', color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}>
+            ออกจากระบบ
+          </button>
         </nav>
       </aside>
 
+      {/* Main Content */}
       <main className="dash-main">
-        <header className="dash-header">
-            <div className="header-info">
-                <h1>รายละเอียดงาน: {task.id}</h1>
-                <p>โครงการ: {task.project}</p>
-            </div>
-        </header>
+        <div className="dash-header" style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+             <h1 style={{ margin: 0, fontSize: '24px' }}>สวัสดี, {user.name}</h1>
+             <span className="role-pill" style={{ background: '#22c55e', color: 'white', padding: '5px 15px', borderRadius: '20px', fontSize: '14px' }}>Worker</span>
+          </div>
+        </div>
 
-        <section className="dash-content" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            
-            {/* 1. ส่วนแสดงรายละเอียดงาน */}
-            <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                <h2 style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginBottom: '15px', color: '#334155' }}>
-                    📋 ข้อมูลงานที่ได้รับมอบหมาย
-                </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div>
-                        <strong style={{ display: 'block', color: '#64748b', fontSize: '14px' }}>ชื่องาน / ตำแหน่ง</strong>
-                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{task.location}</div>
-                    </div>
-                    <div>
-                        <strong style={{ display: 'block', color: '#64748b', fontSize: '14px' }}>หัวหน้างานผู้สั่ง</strong>
-                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{task.foreman}</div>
-                    </div>
-                    <div>
-                        <strong style={{ display: 'block', color: '#64748b', fontSize: '14px' }}>วันที่กำหนด</strong>
-                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{task.date}</div>
-                    </div>
-                    <div>
-                        <strong style={{ display: 'block', color: '#64748b', fontSize: '14px' }}>สถานะปัจจุบัน</strong>
-                        <span style={{ background: '#fef3c7', color: '#d97706', padding: '4px 10px', borderRadius: '12px', fontSize: '14px', fontWeight: 'bold' }}>
-                            {task.status === 'accepted' ? 'กำลังดำเนินการ' : 'รอการส่งงาน'}
-                        </span>
-                    </div>
-                </div>
-                <div style={{ marginTop: '20px', padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                    <strong style={{ color: '#475569' }}>รายละเอียดเพิ่มเติม:</strong>
-                    <p style={{ margin: '5px 0 0', color: '#64748b' }}>
-                        กรุณาดำเนินการตามแบบแปลนฉบับล่าสุด (Rev.03) และถ่ายรูปหน้างานหลังทำเสร็จอย่างน้อย 3 มุม
-                    </p>
+        <div className="dashboard-content" style={{ padding: '30px' }}>
+          
+          {/* Status Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', borderLeft: '5px solid #f59e0b', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                <div style={{ color: '#64748b', fontSize: '14px' }}>ระดับทักษะปัจจุบัน</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e293b', marginTop: '5px' }}>
+                    ระดับ {user.skillLevel || 1}
                 </div>
             </div>
-
-            {/* 2. ฟอร์มส่งงาน */}
-            <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', borderTop: '4px solid #22c55e' }}>
-                <h2 style={{ marginBottom: '20px', color: '#166534' }}>🚀 ส่งมอบงาน (Submit Work)</h2>
-                
-
-
-                    <div style={{ marginBottom: '30px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>แนบรูปภาพผลงาน (Photo Evidence)</label>
-                        <div style={{ border: '2px dashed #cbd5e1', padding: '20px', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', position: 'relative' }}>
-                            <input 
-                                type="file" 
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-                            />
-                            <div style={{ color: '#64748b' }}>
-                                {submission.photo ? (
-                                    <div style={{ color: '#0284c7', fontWeight: 'bold' }}>📷 {submission.photo}</div>
-                                ) : (
-                                    <><span>📷</span> คลิกเพื่ออัปโหลดรูปภาพ</>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <button 
-                        type="submit" 
-                        style={{ width: '100%', padding: '14px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)' }}
-                    >
-                        ยืนยันส่งงาน
-                    </button>
-                
+            <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                <div style={{ color: '#64748b', fontSize: '14px' }}>งานที่ได้รับมอบหมาย</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginTop: '5px' }}>
+                    {assignedTask ? '1' : '0'} งาน
+                </div>
             </div>
+          </div>
 
-        </section>
+          <h3 style={{ color: '#334155', marginBottom: '15px' }}>ภารกิจวันนี้</h3>
+
+          <div style={{ marginBottom: '40px' }}>
+            {!assignedTask ? (
+                <div style={{ padding: '40px', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0', color: '#94a3b8' }}>
+                    ไม่มีงานใหม่
+                </div>
+            ) : (
+                <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #bbf7d0', borderLeft: '5px solid #22c55e', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                         <div>
+                            <h3 style={{ margin: 0, color: '#1e293b' }}>{assignedTask.project}</h3>
+                            <p style={{ margin: '5px 0', color: '#475569' }}>📍 {assignedTask.location}</p>
+                         </div>
+                         <button 
+                            onClick={() => navigate('/worker/task-detail', { state: { task: assignedTask } })}
+                            style={{ padding: '12px 24px', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                         >
+                            ดูรายละเอียด / ส่งงาน
+                         </button>
+                    </div>
+                </div>
+            )}
+          </div>
+
+          <h3 style={{ color: '#334155', marginBottom: '15px' }}>ระบบทดสอบ</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+             {/* ✅ ส่วนล็อคข้อสอบ: ถ้าสอบเสร็จแล้ว (isExamCompleted เป็น true) จะกดไม่ได้และสีจะจางลง */}
+             <div 
+                onClick={() => !isExamCompleted && navigate('/worker/test')} 
+                style={{ 
+                    background: isExamCompleted ? '#f8fafc' : 'white', 
+                    padding: '25px', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    cursor: isExamCompleted ? 'default' : 'pointer', 
+                    transition: 'all 0.2s',
+                    opacity: isExamCompleted ? 0.6 : 1, // จางลงเมื่อสอบเสร็จ
+                    borderTop: isExamCompleted ? '4px solid #cbd5e1' : '4px solid #f59e0b'
+                }}
+             >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ margin: 0, color: isExamCompleted ? '#94a3b8' : '#1e293b' }}>
+                        📝 แบบทดสอบระดับ {user.skillLevel || 1}
+                    </h4>
+                    {isExamCompleted && (
+                        <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '14px' }}>✅ สอบเสร็จแล้ว</span>
+                    )}
+                </div>
+                <p style={{ margin: '10px 0 0 0', fontSize: '14px', color: '#64748b' }}>
+                    {isExamCompleted 
+                      ? "ท่านดำเนินการสอบทฤษฎีเรียบร้อยแล้ว กรุณารอรับการประเมินจาก Foreman ต่อไป" 
+                      : "ทำแบบทดสอบเพื่อวัดระดับความรู้ทางทฤษฎีตามระดับทักษะของท่าน"}
+                </p>
+             </div>
+          </div>
+
+        </div>
       </main>
     </div>
   );
 };
 
-export default WorkerTaskDetail;
+export default WorkerDashboard;

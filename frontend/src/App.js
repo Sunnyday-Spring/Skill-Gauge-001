@@ -31,11 +31,13 @@ import ForemanDashboard from './pages/Foreman/ForemanDashboard';
 import ForemanAssessment from './pages/Foreman/ForemanAssessment';
 import ForemanReportSystem from './pages/Foreman/ForemanReportSystem';
 import ForemanSettings from './pages/Foreman/ForemanSettings';
+import ForemanHistory from './pages/Foreman/ForemanHistory';
 
 // ✅ 6. Worker (แก้ตัว w เป็น W ใหญ่ ตามชื่อโฟลเดอร์ของคุณ: src/pages/Worker)
 import WorkerDashboard from './pages/Worker/WorkerDashboard'; 
 import WorkerTaskDetail from './pages/Worker/WorkerTaskDetail'; 
 import WorkerSettings from './pages/Worker/WorkerSettings';  
+import WorkerHistory from './pages/Worker/WorkerHistory';
 
 // ✅ 7. Assessment (เรียกจากโฟลเดอร์ assessment)
 import SkillAssessmentTest from './pages/assessment/SkillAssessmentTest';
@@ -86,6 +88,7 @@ function App() {
           <Route path="/foreman-reports" element={<ForemanReportSystem />} />
           <Route path="/foreman-reports" element={<ForemanReportSystem />} />
           <Route path="/foreman-settings" element={<ForemanSettings />} />
+          <Route path="/foreman-history" element={<ForemanHistory />} />
           
           {/* Worker & Assessment */}
           <Route path="/worker" element={<WorkerDashboard />} />
@@ -94,6 +97,7 @@ function App() {
           <Route path="/skill-assessment/quiz" element={<WKSkillAssessmentQuiz />} />
           <Route path="/worker/task-detail" element={<WorkerTaskDetail />} />
           <Route path="/worker-settings" element={<WorkerSettings />} />
+          <Route path="/worker/history" element={<WorkerHistory/>} />
 
         </Routes>
       </div>

@@ -67,6 +67,7 @@ const ForemanDashboard = () => {
         <nav className="menu">
           <button className="menu-item active" onClick={() => navigate('/foreman')}>หน้าหลัก</button>
           <button className="menu-item" onClick={() => navigate('/foreman-reports')}>รายงานหน้างาน</button>
+          <button className="menu-item" onClick={() => navigate('/foreman-history')}>ประวัติ</button>
           <button className="menu-item" onClick={() => navigate('/foreman-settings')}>ตั้งค่า</button>
           <button className="menu-item logout-btn" style={{ marginTop: '20px', color: '#ef4444' }} onClick={handleLogout}>ออกจากระบบ</button>
         </nav>

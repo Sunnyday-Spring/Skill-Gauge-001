@@ -92,8 +92,9 @@ const ForemanAssessment = () => {
             <div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold', color: '#1e293b' }}>
                 Foreman Panel
             </div>
-            <button className="menu-item" onClick={() => navigate('/foreman')}>Dashboard</button>
+            <button className="menu-item" onClick={() => navigate('/foreman')}>หน้าหลัก</button>
             <button className="menu-item active">ประเมินผลงาน</button>
+            <button className="menu-item" onClick={() => navigate('/foreman-history')}>ประวัติ</button>
             <button className="menu-item" onClick={() => navigate('/foreman-settings')}>ตั้งค่า</button>
             <button className="menu-item" onClick={() => navigate('/foreman')} style={{ marginTop: 'auto', background: '#f1f5f9', color: '#64748b' }}>
                 &larr; ย้อนกลับ

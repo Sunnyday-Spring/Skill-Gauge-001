@@ -107,6 +107,7 @@ const ForemanReportSystem = () => {
             </div>
             <button className="menu-item" onClick={() => navigate('/foreman')}>Dashboard</button>
             <button className="menu-item active">รายงานสรุปงาน</button>
+            <button className="menu-item" onClick={() => navigate('/foreman-history')}>ประวัติ</button>
             <button className="menu-item" onClick={() => navigate('/foreman-settings')}>ตั้งค่า</button>
             
             <button className="menu-item" onClick={() => navigate('/foreman')} style={{ marginTop: 'auto', background: '#f1f5f9', color: '#64748b' }}>
